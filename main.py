@@ -215,9 +215,9 @@ async def vote(ctx, motion: discord.Option(str, required=False, default="help"))
 
     required = int(len(senators) * 0.5) + 1
     senate.vote_active = True
-    senate.yea = []
-    senate.nay = []
-    senate.abstain = []    
+    senate.yes = []
+    senate.no = []
+    senate.abstain = []
     while(True):
         embed.set_footer(
             text=f"{currentVoteTimer} seconds left • {required} / {len(senators)} required (50% + 1) • Ends early at {voteTimer/2} seconds if motion passes.")
