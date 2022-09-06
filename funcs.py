@@ -512,6 +512,110 @@ def handValue(hand):
                 value = value - 10
     return value
 
+async def hold_vote(ctx, motion, user=None):
+    senators = []
+    for member in ctx.guild.members:
+        for role in member.roles:
+            if(role.id == config.senator_role):
+                senators.append(member.id)
+
+    if(user == None):
+        motion_text = motion
+    else:
+        motion_text = f"{motion} {user.mention}"
+    embed = create_embed(ctx, motion_text, "Senate Vote", f"Vote started by {ctx.author.name} • Starting...")
+    voteMessage = await ctx.channel.send(f"<@&{config.senator_role}>", embed=embed, view=visuals.senateVotes())
+
+    voteTimer = 300
+    currentVoteTimer = voteTimer
+    required = int(len(senators) * 0.5) + 1
+
+    senate.vote_active = True
+    senate.yes = []
+    senate.no = []
+    senate.abstain = []
+
+    while(True):
+        try:
+            embed.remove_field(0)
+            embed.remove_field(0)
+            embed.remove_field(0)
+        except:
+            pass
+
+        embed.set_footer(
+            text=f"{currentVoteTimer} seconds left • {required} / {len(senators)} required (50% + 1) • Ends early at {int(voteTimer/2)} seconds if majority reached.")
+
+        text = ""
+        for key in senate.yes:
+            text += f"<@!{key}>\n"
+        if(text == ""):
+            embed.add_field(name="👍 APPROVE", value="None")
+        else:
+            embed.add_field(name="👍 APPROVE", value=text)
+
+        text = ""
+        for key in senators:
+            if not(key in senate.yes or key in senate.no):
+                text += f"<@!{key}>\n"
+        if(text == ""):
+            embed.add_field(name="🤐 ABSTAIN", value="None")
+        else:
+            embed.add_field(name="🤐 ABSTAIN", value=text)
+
+        text = ""
+        for key in senate.no:
+            text += f"<@!{key}>\n"
+        if(text == ""):
+            embed.add_field(name="👎 DISAPPROVE", value="None")
+        else:
+            embed.add_field(name="👎 DISAPPROVE", value=text)
+
+        await voteMessage.edit(embed=embed)
+        await asyncio.sleep(5)
+        currentVoteTimer -= 5
+        if(currentVoteTimer <= 0):
+            break
+        if(currentVoteTimer <= voteTimer / 2):
+            if(len(senate.yes) >= required):
+                break
+            elif(len(senate.no) >= required):
+                break
+
+    toPin = False
+    if(len(senate.yes) >= required):
+        toPin = True
+        moderation = f"Motion must be manually enforced."
+        if(motion == "Mute / Unmute"):
+            moderation = await mute(ctx, user)
+        elif(motion == "Camp / Uncamp"):
+            moderation = await camp(ctx, user)
+        elif(motion == "Kick"):
+            await kick(ctx, user)
+            moderation = f"{user.mention} has been kicked."
+        elif(motion == "Ban"):
+            await ban(ctx, user)
+            moderation = f"{user.mention} has been banned."
+        elif(motion == "Add / Remove senator"):
+            moderation = await addsenator(ctx, user)
+
+        embed.set_footer(
+            text=f"Vote started by {ctx.author.name} • Vote ended")
+        embed.add_field(name="✅ Motion PASSED", value=f"{moderation}")
+
+    else:
+        embed.set_footer(text=f"Vote started by {ctx.author.name} • Vote ended")
+        embed.add_field(name="❌ Motion DENIED", value="cope")
+
+    await voteMessage.edit(embed=embed)
+    if(toPin):
+        await voteMessage.pin()
+
+    senate.vote_active = False
+    senate.yes = []
+    senate.no = []
+    senate.abstain = []
+
 async def kick(ctx, user):
     desc = f"You have been kicked from **{ctx.guild.name}** by **{ctx.author.name}**"
     desc += f"\nReason: Senate vote."
@@ -545,112 +649,130 @@ async def ban(ctx, user):
         await ctx.send(":x: Was not able to ban.")
 
 async def mute(ctx, user):
-    desc = f"You have been muted in **{ctx.guild.name}** by **{ctx.author.name}**"
-    desc += f"\nReason: Senate vote."
-    embed = discord.Embed(description=desc)
+    isMuted = False
+    for role in user.roles:
+        if(role.id == config.mute_role):
+            isMuted = True
+    if not(isMuted):
+        desc = f"You have been muted in **{ctx.guild.name}** by **{ctx.author.name}**"
+        desc += f"\nReason: Senate vote."
+        embed = discord.Embed(description=desc)
 
-    try:
-        userdm = await user.create_dm()
-        await userdm.send(embed=embed)
-    except:
-        await ctx.send(":x: Was not able to send DM.")
+        try:
+            userdm = await user.create_dm()
+            await userdm.send(embed=embed)
+        except:
+            await ctx.send(":x: Was not able to send DM.")
 
-    try:
-        mute = discord.utils.get(ctx.guild.roles, id=741708944296378482)
-        await user.add_roles(mute)
-        await ctx.send(f"{user.mention} has been muted.")
-    except:
-        await ctx.send(":x: Could not assign role.")
+        try:
+            mute = discord.utils.get(ctx.guild.roles, id=config.mute_role)
+            await user.add_roles(mute)
+            await ctx.send(f"{user.mention} has been muted.")
+            return f"{user.mention} has been muted."
+        except:
+            await ctx.send(":x: Could not assign role.")
+    else:
+        desc = f"You have been unmuted in **{ctx.guild.name}** by **{ctx.author.name}**"
+        desc += f"\nReason: Senate vote."
+        embed = discord.Embed(description=desc)
 
-async def unmute(ctx, user):
-    desc = f"You have been unmuted in **{ctx.guild.name}** by **{ctx.author.name}**"
-    desc += f"\nReason: Senate vote."
-    embed = discord.Embed(description=desc)
+        try:
+            userdm = await user.create_dm()
+            await userdm.send(embed=embed)
+        except:
+            await ctx.send(":x: Was not able to send DM.")
 
-    try:
-        userdm = await user.create_dm()
-        await userdm.send(embed=embed)
-    except:
-        await ctx.send(":x: Was not able to send DM.")
-
-    try:
-        mute = discord.utils.get(ctx.guild.roles, id=741708944296378482)
-        await user.remove_roles(mute)
-        await ctx.send(f"{user.mention} has been unmuted.")
-    except:
-        await ctx.send(":x: Could not remove role.")
+        try:
+            mute = discord.utils.get(ctx.guild.roles, id=config.mute_role)
+            await user.remove_roles(mute)
+            await ctx.send(f"{user.mention} has been unmuted.")
+            return f"{user.mention} has been unmuted."
+        except:
+            await ctx.send(":x: Could not remove role.")
 
 async def camp(ctx, user):
-    desc = f"You have been camped in **{ctx.guild.name}** by **{ctx.author.name}**"
-    desc += f"\nReason: Senate vote."
-    desc += f"\nUse `/camp` for info."
-    embed = discord.Embed(description=desc)
+    isCamped = False
+    for role in user.roles:
+        if(role.id == config.camp_role):
+            isCamped = True
+    if not(isCamped):
+        desc = f"You have been camped in **{ctx.guild.name}** by **{ctx.author.name}**"
+        desc += f"\nReason: Senate vote."
+        desc += f"\nUse `/camp` for info."
+        embed = discord.Embed(description=desc)
 
-    try:
-        userdm = await user.create_dm()
-        await userdm.send(embed=embed)
-    except:
-        await ctx.send(":x: Was not able to send DM.")
+        try:
+            userdm = await user.create_dm()
+            await userdm.send(embed=embed)
+        except:
+            await ctx.send(":x: Was not able to send DM.")
 
-    try:
-        mute = discord.utils.get(ctx.guild.roles, id=835573253858263050)
-        await user.add_roles(mute)
-        await ctx.send(f"{user.mention} has been camped.")
-    except Exception as e:
-        print(e)
-        print(dir(user))
-        await ctx.send(":x: Could not assign role.")
+        try:
+            mute = discord.utils.get(ctx.guild.roles, id=config.camp_role)
+            await user.add_roles(mute)
+            await ctx.send(f"{user.mention} has been camped.")
+            return f"{user.mention} has been camped."
+        except Exception as e:
+            print(e)
+            print(dir(user))
+            await ctx.send(":x: Could not assign role.")
+    else:
+        desc = f"You have been uncamped in **{ctx.guild.name}** by **{ctx.author.name}**"
+        desc += f"\nReason: Senate vote."
+        embed = discord.Embed(description=desc)
 
-async def uncamp(ctx, user):
-    desc = f"You have been uncamped in **{ctx.guild.name}** by **{ctx.author.name}**"
-    desc += f"\nReason: Senate vote."
-    embed = discord.Embed(description=desc)
+        try:
+            userdm = await user.create_dm()
+            await userdm.send(embed=embed)
+        except:
+            await ctx.send(":x: Was not able to send DM.")
 
-    try:
-        userdm = await user.create_dm()
-        await userdm.send(embed=embed)
-    except:
-        await ctx.send(":x: Was not able to send DM.")
-
-    try:
-        mute = discord.utils.get(ctx.guild.roles, id=835573253858263050)
-        await user.remove_roles(mute)
-        await ctx.send(f"{user.mention} has been uncamped.")
-    except:
-        await ctx.send(":x: Could not remove role.")
+        try:
+            mute = discord.utils.get(ctx.guild.roles, id=config.camp_role)
+            await user.remove_roles(mute)
+            await ctx.send(f"{user.mention} has been uncamped.")
+            return f"{user.mention} has been uncamped."
+        except:
+            await ctx.send(":x: Could not remove role.")
 
 async def addsenator(ctx, user):
-    desc = f"You have been added to the senate of **{ctx.guild.name}** by **{ctx.author.name}**"
-    desc += f"\nReason: Senate vote."
-    embed = discord.Embed(description=desc)
+    isSenator = False
+    for role in user.roles:
+        if(role.id == config.camp_role):
+            isSenator = True
+    if not(isSenator):
+        desc = f"You have been added to the senate of **{ctx.guild.name}** by **{ctx.author.name}**"
+        desc += f"\nReason: Senate vote."
+        embed = discord.Embed(description=desc)
 
-    try:
-        userdm = await user.create_dm()
-        await userdm.send(embed=embed)
-    except:
-        await ctx.send(":x: Was not able to send DM.")
+        try:
+            userdm = await user.create_dm()
+            await userdm.send(embed=embed)
+        except:
+            await ctx.send(":x: Was not able to send DM.")
 
-    try:
-        mute = discord.utils.get(ctx.guild.roles, id=748740175450079273)
-        await user.add_roles(mute)
-        await ctx.send(f"{user.mention} has been added as a senator.")
-    except:
-        await ctx.send(":x: Could not assign role.")
+        try:
+            mute = discord.utils.get(ctx.guild.roles, id=config.senate_role)
+            await user.add_roles(mute)
+            await ctx.send(f"{user.mention} has been added as a senator.")
+            return f"{user.mention} has been added as a senator."
+        except:
+            await ctx.send(":x: Could not assign role.")
+    else:
+        desc = f"You have been removed from the senate of **{ctx.guild.name}** by **{ctx.author.name}**"
+        desc += f"\nReason: Senate vote."
+        embed = discord.Embed(description=desc)
 
-async def removesenator(ctx, user):
-    desc = f"You have been removed from the senate of **{ctx.guild.name}** by **{ctx.author.name}**"
-    desc += f"\nReason: Senate vote."
-    embed = discord.Embed(description=desc)
+        try:
+            userdm = await user.create_dm()
+            await userdm.send(embed=embed)
+        except:
+            await ctx.send(":x: Was not able to send DM.")
 
-    try:
-        userdm = await user.create_dm()
-        await userdm.send(embed=embed)
-    except:
-        await ctx.send(":x: Was not able to send DM.")
-
-    try:
-        mute = discord.utils.get(ctx.guild.roles, id=748740175450079273)
-        await user.remove_roles(mute)
-        await ctx.send(f"{user.mention} has been removed from the senate.")
-    except:
-        await ctx.send(":x: Could not remove role.")
+        try:
+            mute = discord.utils.get(ctx.guild.roles, id=config.senate_role)
+            await user.remove_roles(mute)
+            await ctx.send(f"{user.mention} has been removed from the senate.")
+            return f"{user.mention} has been removed from the senate."
+        except:
+            await ctx.send(":x: Could not remove role.")

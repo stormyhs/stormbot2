@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+from email.policy import default
 import os
 import discord
 from discord.utils import get
@@ -150,8 +151,13 @@ async def coom(ctx, user: discord.Member):
     await ctx.respond(embed=embed, file=file)
 
 # SF SPECIFIC
-@bot.command(description="Start a senate vote.", guild_ids=[687732235604066366, 717329133960560662])
-async def vote(ctx, motion: discord.Option(str, required=False, default="help")):
+@bot.command(description='test vote', guild_ids=[687732235604066366, 717329133960560662])
+async def vote(ctx, motion: discord.Option(str, required=True, choices=["Other", "Mute / Unmute", "Camp / Uncamp", "Kick", "Ban", "Add / Remove senator", "Help / List Senators"]), user: discord.Option(discord.Member, required=False, default="")):
+    if(ctx.channel.id != config.senate_channel):
+        embed = funcs.create_embed(ctx, ":x: This command is only available in the senate.")
+        await ctx.respond(embed=embed)
+        return
+
     isSenator = False
     for role in ctx.author.roles:
         if(role.id == config.senator_role):
@@ -164,9 +170,9 @@ async def vote(ctx, motion: discord.Option(str, required=False, default="help"))
     senators = []
     for member in ctx.guild.members:
         for role in member.roles:
-            if(role.id == config.senator_role or role.id == 727460367973875722): #2nd id is monarch in stormnet cc
+            if(role.id == config.senator_role):
                 senators.append(member.id)
-
+    
     if(len(senators) < 3):
         embed = funcs.create_embed(ctx, f":x: There is less than 3 senators.")
         await ctx.respond(embed=embed)
@@ -177,171 +183,24 @@ async def vote(ctx, motion: discord.Option(str, required=False, default="help"))
         await ctx.respond(embed=embed)
         return
 
-    if(motion == "help"):
-        text = f"Automatic votes: `(un)mute`, `(un)camp`, `kick`, `(un)ban`, `addsenator`, `removesenator`.\n\nEnter other text for manual enforcement. Motion will end early if enough votes are gathered and the timer is below half of default start."
+    if(motion == "Help / List Senators"):
+        text = "The motion ends after the timer reaches 0, or after a majority is decided and the timer reaches halfway."
         text += f"\n\nThere are {len(senators)} senators:\n"
         for senator in senators:
             text += f"<@!{senator}>\n"
-        head_of_senate_id = "NONE"
-        for user in ctx.guild.members:
-            for role in user.roles:
-                if(role.id == config.head_of_senate_role):
-                    head_of_senate_id = user.id
-        text += f"\n<@{head_of_senate_id}> is the head of senate.\n"
         embed = funcs.create_embed(ctx, text)
-        await ctx.respond(embed=embed)
+        await ctx.respond(embed=embed, ephemeral=True)
         return
-    
-    action = motion.split(" ")[0]
-    if(action == "addsenator"):
-        if(len(senators) >= 10):
-            embed = funcs.create_embed(ctx, f":x: The senate is limited to 10 senators.")
+    if(motion == "Other"):
+        await ctx.send_modal(visuals.senateVoteDialog(ctx))
+    else:
+        if(user == ""):
+            embed = funcs.create_embed(ctx, f":x: You must specify a user for this type of vote.")
             await ctx.respond(embed=embed)
             return
-
-    senateChannel = bot.get_channel(config.senate_channel)
-    await ctx.defer()
-
-    embed = funcs.create_embed(ctx, motion, "", f"Vote started by {ctx.author.name} • Starting...")
-    voteMessage = await senateChannel.send("<@&748740175450079273>", embed=embed, view=visuals.senateVotes())
-    # voteTimer = 30
-    voteTimer = 300
-    currentVoteTimer = voteTimer
-    embed.add_field(name="YEA", value="Null")
-    embed.add_field(name="ABSTAIN", value="Null")
-    embed.add_field(name="NAY", value="Null")
-
-    yea, nay = {}, {}
-
-    required = int(len(senators) * 0.5) + 1
-    senate.vote_active = True
-    senate.yes = []
-    senate.no = []
-    senate.abstain = []
-    while(True):
-        embed.set_footer(
-            text=f"{currentVoteTimer} seconds left • {required} / {len(senators)} required (50% + 1) • Ends early at {voteTimer/2} seconds if motion passes.")
-        embed.remove_field(0)
-        embed.remove_field(0)
-        embed.remove_field(0)
-
-        yea = senate.yes
-        nay = senate.no
-        text = ""
-
-        for key in yea:
-            text += f"<@!{key}>\n"
-        if(text == ""):
-            embed.add_field(name="APPROVE", value="None")
-        else:
-            embed.add_field(name="APPROVE", value=text)
-
-        text = ""
-        for key in senators:
-            if not(key in yea or key in nay):
-                text += f"<@!{key}>\n"
-        if(text == ""):
-            embed.add_field(name="ABSTAIN", value="None")
-        else:
-            embed.add_field(name="ABSTAIN", value=text)
-
-        text = ""
-        for key in nay:
-            text += f"<@!{key}>\n"
-        if(text == ""):
-            embed.add_field(name="DISAPPROVE", value="None")
-        else:
-            embed.add_field(name="DISAPPROVE", value=text)
-
-        await voteMessage.edit(embed=embed)
-        await asyncio.sleep(5)
-        currentVoteTimer -= 5
-        if(currentVoteTimer <= -10):
-            break
-        if(currentVoteTimer <= voteTimer / 2):
-            if(len(yea) >= required):
-                break
-            elif(len(nay) >= required):
-                break
-
-    embed.remove_field(0)
-    embed.remove_field(0)
-    embed.remove_field(0)
-    yea = senate.yes
-    nay = senate.no
-    text = ""
-    for key in yea:
-        text += f"<@!{key}>\n"
-    if(text == ""):
-        embed.add_field(name="APPROVE", value="None")
-    else:
-        embed.add_field(name="APPROVE", value=text)
-    text = ""
-    for key in senators:
-        if not(key in yea or key in nay):
-            text += f"<@!{key}>\n"
-    if(text == ""):
-        embed.add_field(name="ABSTAIN", value="None")
-    else:
-        embed.add_field(name="ABSTAIN", value=text)
-    text = ""
-    for key in nay:
-        text += f"<@!{key}>\n"
-    if(text == ""):
-        embed.add_field(name="DISAPPROVE", value="None")
-    else:
-        embed.add_field(name="DISAPPROVE", value=text)
-
-
-    toPin = False
-    if(len(yea) >= required):
-        toPin = True
-        moderation = f"Motion must be manually enforced by <@&{config.head_of_senate_role}>."
-        try:
-            user = motion.split(" ")[1]
-            user = ctx.guild.get_member(int(''.join(filter(str.isdigit, user))))
-            if(action == "kick"):
-                await funcs.kick(ctx, user)
-                moderation = f"{user.mention} has been kicked."
-            elif(action == "ban"):
-                await funcs.ban(ctx, user)
-                moderation = f"{user.mention} has been banned."
-            elif(action == "mute"):
-                await funcs.mute(ctx, user)
-                moderation = f"{user.mention} has been muted."
-            elif(action == "unmute"):
-                await funcs.unmute(ctx, user)
-                moderation = f"{user.mention} has been unmuted."
-            elif(action == "camp"):
-                await funcs.camp(ctx, user)
-                moderation = f"{user.mention} has been camped."
-            elif(action == "uncamp"):
-                await funcs.uncamp(ctx, user)
-                moderation = f"{user.mention} has been uncamped."
-            elif(action == "addsenator"):
-                await funcs.addsenator(ctx, user)
-                moderation = f"{user.mention} has been added to the senate."
-            elif(action == "removesenator"):
-                await funcs.removesenator(ctx, user)
-                moderation = f"{user.mention} has been removed from the senate."
-        except Exception as e:
-            print(e)
-
-        embed.set_footer(
-            text=f"Vote started by {ctx.author.name} • Vote ended")
-        embed.add_field(name="Motion PASSED", value=f"{moderation}")
-
-    else:
-        embed.set_footer(
-            text=f"Vote started by {ctx.author.name} • Vote ended")
-        embed.add_field(name="Motion DENIED", value="cope")
-    await voteMessage.edit(embed=embed)
-    if(toPin):
-        try:
-            await voteMessage.pin()
-        except Exception as e:
-            print(e)
-    senate.vote_active = False
+        await ctx.defer()
+        await funcs.hold_vote(ctx, motion, user)
+    return
 
 @bot.command(description="Announce a game.", guild_ids=[687732235604066366, 717329133960560662])
 async def host(ctx):

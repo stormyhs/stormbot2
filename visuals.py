@@ -72,9 +72,9 @@ class senateVotes(discord.ui.View):
     @discord.ui.select(
         placeholder = "Select your vote.",
         options = [
-            discord.SelectOption(label=f"Abstain.", value=1, emoji="🤐"),
             discord.SelectOption(label=f"Approve.", value=2, emoji="👍"),
-            discord.SelectOption(label=f"Disapprove.", value=3, emoji="❌")
+            discord.SelectOption(label=f"Abstain.", value=1, emoji="🤐"),
+            discord.SelectOption(label=f"Disapprove.", value=3, emoji="👎")
         ]
     )
     async def callback(self, button, interaction):
@@ -227,3 +227,15 @@ def createServiceButtons(ctx, services):
                 await ctx.channel.send(embed=embed)
                 os.system(f"systemctl start {button.values[0]}")
     return serviceButtons()
+
+def senateVoteDialog(ctx):
+    class MyModal(discord.ui.Modal):
+        def __init__(self, *args, **kwargs) -> None:
+            super().__init__(*args, **kwargs)
+            self.add_item(discord.ui.InputText(label="Motion", style=discord.InputTextStyle.long, placeholder="Write your proposition here."))
+
+        async def callback(self, interaction: discord.Interaction):
+            await interaction.response.defer()
+            await funcs.hold_vote(ctx, self.children[0].value)
+
+    return MyModal(title="Propose a motion")
