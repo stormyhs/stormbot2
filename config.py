@@ -1,4 +1,4 @@
-token = "ODQ2NzgyNTIwMzM4OTM5OTI0.G2JlJd.nJE7rF-YVEJcSacS33KCXURjIavc3kqf4wyF_s"
+token = ""
 prefix = "s" # this doesnt matter anymore. has served well.
 
 # lol
