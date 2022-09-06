@@ -151,7 +151,7 @@ async def coom(ctx, user: discord.Member):
     await ctx.respond(embed=embed, file=file)
 
 # SF SPECIFIC
-@bot.command(description='test vote', guild_ids=[687732235604066366, 717329133960560662])
+@bot.command(description='Propose a motion to the senate.', guild_ids=[687732235604066366, 717329133960560662])
 async def vote(ctx, motion: discord.Option(str, required=True, choices=["Other", "Mute / Unmute", "Camp / Uncamp", "Kick", "Ban", "Add / Remove senator", "Help / List Senators"]), user: discord.Option(discord.Member, required=False, default="")):
     if(ctx.channel.id != config.senate_channel):
         embed = funcs.create_embed(ctx, ":x: This command is only available in the senate.")
