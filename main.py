@@ -18,24 +18,33 @@ bot = discord.Bot(intents=intents)
 async def on_ready():
     print(f'Logged in as {bot.user}')
 
+    info = ""
+    for guild in bot.guilds:
+        info += f"{guild.name} ({len(guild.members)})\n"
+
+    channel = bot.get_channel(981696108952711178)
+    message = await channel.fetch_message(982107329585643540)
+
+    embed = discord.Embed(title="StormBot info panel", description=info)
+    await message.edit(embed=embed)
+
 # ECONOMY
 @bot.command(description="Displays your balance.")
 async def balance(ctx):
     embed = funcs.create_embed(ctx, f"You have {funcs.sdb.cool_balance(ctx.author.id)} credits.")
-    await ctx.respond(embed=embed, view=visuals.createSpendingButton(ctx))
+    await ctx.respond(embed=embed)
 
 @bot.command(description="Work for once in your life.")
 async def work(ctx):
     if(int(funcs.sdb.get_value(ctx.author.id, 'workcd')) < int(time.time())):
         funcs.sdb.set_value(ctx.author.id, 'workcd', int(time.time() + (30 * 60)))
 
-        prize = random.choice([100, 250, 500, 750, 1000])
-        phrases = ["You mow someone's lawn.", "You sell some used condoms.",
-                   "You steal an NFT.", "You gipsy someone's phone.",
+        prize = random.choice([100, 250, 500])
+        phrases = ["You launch a crypto scam.", "You start dropshipping.",
+                   "You steal an NFT.", "You sell some feet pics.",
                    "You sell your liver.", "You open an OnlyFans.",
-                   "You steal some highschooler's lunch money.", "You rob the local homosexual.",
-                   "You mine some crypto.", "You do some slurping.",
-                   "You scam someone on ebay.", "You beg stormy to cheat you credits."]
+                   "You hack the StormBot database.", "You mine some crypto.",
+                   "You donate sperm.", "You launder some money."]
         funny = random.choice(phrases)
         
         funcs.sdb.add_credits(ctx.author.id, prize)
@@ -202,19 +211,6 @@ async def vote(ctx, motion: discord.Option(str, required=True, choices=["Other",
         await funcs.hold_vote(ctx, motion, user)
     return
 
-@bot.command(description="Announce a game.", guild_ids=[687732235604066366, 717329133960560662])
-async def host(ctx):
-    canHost = False
-    for role in ctx.author.roles:
-        if(role.id == 772182443247009792):
-            canHost = True
-    if(canHost):
-        cmd = []
-        await ctx.channel.send(view=visuals.createGameButton(ctx, cmd, client))
-    else:
-        embed = funcs.create_embed(ctx, ":x: Certified hosts only")
-        await ctx.channel.send(embed=embed)
-
 @bot.command(description="Get info on your sentence.", guild_ids=[687732235604066366, 717329133960560662])
 async def camp(ctx):
     isCamped = False
@@ -279,36 +275,9 @@ async def mine(ctx):
         phrases), footer=f"{funcs.sdb.get_value(ctx.author.id, 'campAmount')} rocks left.")
     await ctx.respond(embed=embed)
 
-@bot.command(description='StormNet server and service status.', guild_ids=[687732235604066366, 717329133960560662])
-async def service(ctx):
-    services = {"mc": True, "stormbot": False, "agencybot": False, "slurbot": False, "schizobot": False, "unturned": False, "zerotier-one": False}
-    desc = ""
-
-    for service in services:
-        if(os.system(f"service {service} status") == 0):
-            desc+=f":green_circle: `{service}` **RUNNING**\n"
-        else:
-            desc+=f":red_circle: `{service}` **STOPPED**\n"
-    
-    embed = funcs.create_embed(ctx, desc, "StormNet Service Status")
-    await ctx.respond(embed=embed, view=visuals.createServiceButtons(ctx, services))
-
 # EVENTS
 @bot.event
 async def on_message(ctx):
     if(ctx.author.bot): return
-
-    if(ctx.guild.id == 687732235604066366):
-        if(random.randint(1, 200) == 1):
-            prize = random.choice([100, 250, 500, 1000])
-            funcs.sdb.add_credits(ctx.author.id, prize)
-            embed = funcs.create_embed(ctx, f"RNG gave {ctx.author.mention} {prize} credits for free. Go gamble it away.")
-            await ctx.channel.send(embed=embed, view=visuals.createSpendingButton(ctx))
-
-    if(ctx.guild.id == 717329133960560662):
-        prize = random.choice([100, 250, 500, 1000])
-        funcs.sdb.add_credits(ctx.author.id, prize)
-        embed = funcs.create_embed(ctx, f"RNG gave {ctx.author.mention} {prize} credits for free. Go gamble it away.")
-        await ctx.channel.send(embed=embed, view=visuals.createSpendingButton(ctx))
 
 bot.run(config.token)

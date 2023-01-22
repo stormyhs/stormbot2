@@ -10,12 +10,8 @@ import senate
 
 sdb = dbhandler.db_handler()
 
-def create_account_if_not_exist(ctx):
-    sdb.create_account(ctx.author.id)
-
 def setfootertext(ctx):
-    dt = datetime.datetime.now()
-    text = f"{ctx.author.name} • {dt.strftime('%H')}:{dt.strftime('%M')}"
+    text = f"{ctx.author.name}"
     return text
 
 def dotnumbers(number):
@@ -78,14 +74,14 @@ async def slots(ctx, amount):
     winning = True
     if(n <= 2):
         prize = amount * 10
-        title = "JACKPOT!"
-    elif(n <= 12):
+        title = ":fire: JACKPOT! :fire:"
+    elif(n <= 8):
         prize = amount * 7
         title = "You've hit a fortune!"
-    elif(n <= 34):
+    elif(n <= 24):
         prize = amount * 3
         title = "You beat the slots!"
-    elif(n <= 60):
+    elif(n <= 35):
         title = "You won a small prize."
         prize = (amount * 2) + random.randint(50, 250)
     else:
